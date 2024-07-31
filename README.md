@@ -1,6 +1,6 @@
 # Introduction
 
-Recently deep generative models are used more and more in computer aided drug discovery. Typical models used are Diffusion Models, VAE's and different methods utilizing GNN's. In this project I will try to utilize different generative models. Here I try to focus on pocket-specific models, especially molecular linkers and fragment based models in combination with a molecular dynamics simulation. The overally goal is an improvement over a classical Docking-Simulation-Screening pipeline.
+Recently deep generative models are used more and more in computer aided drug discovery. Typical models used are Diffusion Models, VAE's and different methods utilizing GNN's. In this project I will try to utilize different generative models. Here I try to focus on pocket-specific models, especially molecular linkers and fragment based models in combination with a molecular dynamics simulation. The overall goal is an improvement over a classical Docking-Simulation-Screening pipeline.
 
 A list of the models I am currently exploring:
 
