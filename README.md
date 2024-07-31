@@ -10,7 +10,7 @@ A list of the models I am currently exploring:
 
 
 
-Similar to how [Cosolvent Molecular Dynamics](https://pubs.acs.org/doi/10.1021/acs.jmedchem.6b00399) allow for finding states that usually arent available at docking (e.g. binding pockets forming later on in a simulation), this proposed pipeline should also allow for conveniences.
+Similar to how [Cosolvent Molecular Dynamics](https://pubs.acs.org/doi/10.1021/acs.jmedchem.6b00399) allow for finding states that usually arent available at docking (e.g. binding pockets forming later on in a simulation), this proposed pipeline should also allow for similar sideffects.
 
 # Simulation Pipeline
 
