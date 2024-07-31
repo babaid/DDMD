@@ -37,9 +37,16 @@ parser.add_argument("--water-force-field", default='amber/tip3p_standard.xml', h
 
 
 def main(args):
-    
+
     pdb = PDBFile(args.protein)
     rdkit_mol = Chem.MolFromMol2File(args.ligand)
+
+    npos = []
+    for pos in pdb.positions:
+        l = pos -  pdb.positions.mean()
+        npos.append(l.value_in_unit(unit.nanometer))
+    npos = np.array(npos)
+
    
     molecule = Molecule.from_rdkit(rdkit_mol, hydrogens_are_explicit=False)
     molecule.generate_conformers()
@@ -55,8 +62,6 @@ def main(args):
     modeller.add(molecule_topology.to_openmm(),
                 molecule_topology.get_positions().to_openmm())
 
-    #positions = move_compound_by_vector(modeller.topology, modeller.positions, Vec3(3.0, 3.0, 3.0)*unit.nanometers)
-    #modeller.positions = positions
 
     gaff = GAFFTemplateGenerator(molecules=molecule)
     forcefield = ForceField(args.protein_force_field,
@@ -74,15 +79,12 @@ def main(args):
                                     hydrogenMass=4.0*unit.amu,
                                     rigidWater=True, nonbondedMethod=app.PME)
 
- 
 
     protd = []
     for chain in modeller.topology.chains():
         if chain.id in protein_chain_ids:
             for atom in chain.atoms():
                 protd.append(atom.index)
-
-
 
     # WE NEED TO RESTRAIN THE LIGAND TO STAY IN THE BINDING POCKET.
     restrain_lst = []
@@ -114,4 +116,19 @@ def main(args):
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    
+    subdirs = ["states", "systems", "topologies", "reports", "checkpoints",  "prediction"]
+
+    if not os.path.isdir(args.output):
+        print("Creating output directory.")
+        os.mkdir(args.output)
+        for subdir in subdirs:
+            os.mkdir(os.path.join(args.output, subdir))
+    else:
+        print("Output directory seems to already exist. This ma cause issues, take care.")
+        for subdir in subdirs:
+            if not os.path.isdir(os.path.join(args.output, subdir)):
+                os.mkdir(os.path.join(args.output, subdir))
+
+    print("Starting System Setup.")
     main(args)

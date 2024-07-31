@@ -22,4 +22,3 @@ def seperate_complex(path, output):
   cmd.select('ligand', 'organic')
   cmd.save(os.path.join(output, 'protein.pdb'), 'protein')
   cmd.save(os.path.join(output, 'ligand.sdf'), 'ligand')
-  
