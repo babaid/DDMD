@@ -16,7 +16,7 @@ Similar to how [Cosolvent Molecular Dynamics](https://pubs.acs.org/doi/10.1021/a
 
 The simulation will have following steps:
 
-1. System Setup with constraints 
+1. System Setup
 2. NVT Equilibriation
 3. NPT Equilibriation
 4. Production Run for N steps
