@@ -1,81 +1,66 @@
-import argparse
 import sys
 sys.path.append("source")
-
+import os
+import argparse
 from openmmtools import integrators
 from openmm import Platform, unit, CustomBondForce
 from openmm.app import Simulation, PDBReporter, CheckpointReporter, PDBFile, StateDataReporter,  DCDReporter, Modeller
 from openmm import Platform, unit, XmlSerializer, MonteCarloBarostat, LangevinIntegrator, NoseHooverIntegrator
 from alive_progress import alive_bar
 import numpy as np
-import argparse
-import os
+#
+
+from simulation_utils import load_system_state, save_system_state
 
 
-parser = argparse.ArgumentParser(description="NVT Equilibriation")
+parser = argparse.ArgumentParser(description="NPT Equilibriation")
 
 
 parser.add_argument("-o", "--output", default='data', help="Output directory for simulation files.")
-parser.add_argument("-s", "--steps", type=int, default=1e5, help="Number of steps")
-parser.add_argument("-z", "--step-size", type=float, default=0.002, help="Step size (ps")
-parser.add_argument("-l", "--ligand", tpye=str)
+parser.add_argument("-s", "--steps", type=int, default=2e5, help="Number of steps")
+parser.add_argument("-z", "--step-size", type=float, default=0.1, help="Step size (ps")
+parser.add_argument("-i", "--interval", type=int, default=10000, help="Reporting interval")
+parser.add_argument("-t", "--temperature", type=int, default=300, help="Temperature (K)")
 parser.add_argument("-p", "--platform", default="CUDA", help="Platform to perform computations on. [CUDA, CPU, Reference]")
+
 
 
 def main(args):
 
-    with open(os.path.join(args.output, "systems", "system_3.xml")) as input:
-        system = XmlSerializer.deserialize(input.read())
-        
-    pdbfile = PDBFile(os.path.join(args.output, "topologies", "topology_2.pdb"))
-
-    modeller = Modeller(pdbfile.topology, pdbfile.positions)
-
-    with open(os.path.join(args.output, "states", "state_2.xml")) as input:
-        state = XmlSerializer.deserialize(input.read())
-
-
-
+    system, pdbfile, state = load_system_state(args.output, 2)
+    print(state)
+    combined_modeller = Modeller(pdbfile.topology, pdbfile.positions)
 
     print("Production Run")
-    platform =Platform.getPlatformByName("CUDA")
-    integrator = NoseHooverIntegrator(300*unit.kelvin, 1/unit.picoseconds, 1*unit.femtoseconds)
-    simulation = Simulation(modeller.topology, system, integrator, platform)
+    platform =Platform.getPlatformByName(args.platform)
+    integrator = NoseHooverIntegrator(300*unit.kelvin, 1/unit.picoseconds, args.step_size*unit.femtoseconds)
+    simulation = Simulation(combined_modeller.topology, system, integrator, platform)
     simulation.context.setState(state)
 
-    simulation.reporters.append(PDBReporter('production.pdb', 1000)) 
+    simulation.reporters.append(PDBReporter(os.path.join(args.output, 'reports', 'production.pdb'),  args.interval)) 
     simulation.reporters.append(StateDataReporter(
-                                                    "production_report.csv",
-                                                    1000,
+                                                    os.path.join(args.output, 'reports', 'production_report.csv'),
+                                                    args.interval,
                                                     step=True,
                                                     potentialEnergy=True,
                                                     totalEnergy=True,
                                                     temperature=True,
                                                     density=True,
                                                     progress=True,
-                                                    totalSteps=2e6,
+                                                    totalSteps=args.steps,
                                                     separator='\t'
                                                     ))
-
-    simulation.reporters.append(CheckpointReporter("production.chk", 1e4))
+    simulation.reporters.append(CheckpointReporter(os.path.join(args.output, 'checkpoints', 'NPT.chk'), args.interval))
         
-    mdsteps = 2e6
+    mdsteps = 2e4
+        
+    with alive_bar(100, force_tty=True) as bar:
+            simulation.step(mdsteps/100)
+            bar()
+
+    save_system_state(system, simulation, combined_modeller.topology, 3, args.output)
 
 
-
-    simulation.step(mdsteps)
-
-
-
-    state = simulation.context.getState(getPositions=True, getVelocities=True)
-
-
-    with open('PROD_state.xml', 'w') as output:
-        output.write(XmlSerializer.serialize(state))
-
-    with open('topology_prod.pdb', 'w') as output:
-        PDBFile.writeFile(pdbfile.topology, state.getPositions(), output)
 if __name__ == '__main__':
-    
     args = parser.parse_args()
     main(args)
