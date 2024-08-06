@@ -70,11 +70,11 @@ def simulate(args):
     with alive_bar(100, force_tty=True) as bar:
         for i in range(100):
             simulation.step(mdsteps/100)
-            #simulation.context.setParameter('kres', 100-i*0.98)
+            simulation.context.setParameter('kres', 100-i*0.98)
             simulation.context.setParameter('kbb', 100-i*0.98)
             bar()
 
-    #simulation.context.setParameter('kres',0)
+    simulation.context.setParameter('kres',0)
     simulation.context.setParameter('kbb', 0)
 
     state = simulation.context.getState(getPositions=True, getVelocities=True)

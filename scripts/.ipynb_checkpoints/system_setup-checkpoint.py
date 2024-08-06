@@ -18,8 +18,6 @@ from simulation_utils import add_backbone_posres
 
 from topology_tools import move_compound_by_vector
 
-import parmed as pmd
-
 parser = argparse.ArgumentParser(description="System Setup")
 
 parser.add_argument("-p", "--protein", required=True, help="Protein PDB file")
@@ -36,7 +34,6 @@ parser.add_argument("--no-neutralize", action='store_true', help="Don't add ions
 parser.add_argument("--protein-force-field", default='amber/ff14SB.xml', help="Protein force field")
 parser.add_argument("--ligand-force-field", default='gaff-2.11', help="Ligand force field")
 parser.add_argument("--water-force-field", default='amber/tip3p_standard.xml', help="Ligand force field")
-parser.add_argument("--export-to-gmx", default=True, type=bool, help="Should the system be exported to gromacs.")
 
 
 def main(args):
@@ -78,7 +75,7 @@ def main(args):
     system = forcefield.createSystem(modeller.topology,
                                     nonbondedCutoff=1.1*unit.nanometers,
                                     switchDistance=0.9*unit.nanometers,
-                                    constraints=app.AllBonds,
+                                    constraints=app.HBonds,
                                     hydrogenMass=4.0*unit.amu,
                                     rigidWater=True, nonbondedMethod=app.PME)
 
@@ -116,10 +113,7 @@ def main(args):
     
     with open(os.path.join(args.output, 'topologies', 'topology_0.pdb'), 'w') as output:
         PDBFile.writeFile(modeller.topology, modeller.positions, output)
-    if args.export_to_gmx:
-        structure = pmd.openmm.load_topology(modeller.topology, system, modeller.positions)
-        structure.save(os.path.join("systems", 'system.top'), format='gromacs')
-        structure.save(os.path.join("systems", 'system.gro'), format='gromacs')
+
 if __name__ == '__main__':
     args = parser.parse_args()
     

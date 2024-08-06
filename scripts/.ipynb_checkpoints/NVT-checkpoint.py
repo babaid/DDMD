@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description="NVT Equilibriation")
 
 parser.add_argument("-o", "--output", default='data', help="Output directory for simulation files.")
 parser.add_argument("-s", "--steps", type=int, default=1e5, help="Number of steps")
-parser.add_argument("-z", "--step-size", type=float, default=0.2, help="Step size (ps")
+parser.add_argument("-z", "--step-size", type=float, default=0.002, help="Step size (ps")
 parser.add_argument("-f", "--friction-coeff", type=float, default=1, help="Friction coefficient (ps)")
 parser.add_argument("-i", "--interval", type=int, default=1000, help="Reporting interval")
 parser.add_argument("-t", "--temperature", type=int, default=300, help="Temperature (K)")

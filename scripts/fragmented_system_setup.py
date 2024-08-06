@@ -18,6 +18,8 @@ from simulation_utils import add_backbone_posres
 
 from topology_tools import move_compound_by_vector
 
+from utils import Mol2MolSupplier
+
 import parmed as pmd
 
 parser = argparse.ArgumentParser(description="System Setup")
@@ -25,7 +27,7 @@ parser = argparse.ArgumentParser(description="System Setup")
 parser.add_argument("-p", "--protein", required=True, help="Protein PDB file")
 parser.add_argument("-l", "--ligand", required=True, help="Ligand molfile")
 parser.add_argument("-o", "--output", default='data', help="Output directory for simulation files.")
-parser.add_argument("--padding", type=float, default=10, help="Padding for solvent box (A)")
+parser.add_argument("--padding", type=float, default=1, help="Padding for solvent box (A)")
 parser.add_argument("--water-model", default="tip3p",
                     choices=["tip3p", "spce", "tip4pew", "tip5p", "swm4ndp"],
                     help="Water model for solvation")
@@ -42,19 +44,25 @@ parser.add_argument("--export-to-gmx", default=True, type=bool, help="Should the
 def main(args):
 
     pdb = PDBFile(args.protein)
-    rdkit_mol = Chem.MolFromMol2File(args.ligand)
+    mols = Mol2MolSupplier(args.ligand, sanitize=False)
 
+    for rdmol in mols:
+        #Chem.AddHs(rdmol)
+        Chem.AssignStereochemistry(rdmol, cleanIt=True, force=True, flagPossibleStereoCenters=True)
+    
     npos = []
     for pos in pdb.positions:
         l = pos -  pdb.positions.mean()
         npos.append(l.value_in_unit(unit.nanometer))
     npos = np.array(npos)
 
-   
-    molecule = Molecule.from_rdkit(rdkit_mol, hydrogens_are_explicit=False)
-    molecule.generate_conformers()
-    molecule.generate_unique_atom_names()
-    molecule_topology = molecule.to_topology()
+    molecules = [ Molecule.from_rdkit(rdmol,  allow_undefined_stereo=True) for rdmol in mols]
+    molecules_topologies  = []
+
+    for molecule in molecules:
+        #molecule.generate_conformers()
+        molecule.generate_unique_atom_names()
+        molecules_topologies.append(molecule.to_topology())
 
     protein_chain_ids = []
     for chain in pdb.topology.chains():
@@ -62,11 +70,20 @@ def main(args):
 
 
     modeller = Modeller(pdb.topology, pdb.positions)
-    modeller.add(molecule_topology.to_openmm(),
-                molecule_topology.get_positions().to_openmm())
+
+    abc = ["K", "L", "M", "N", "O"]
+    for i, topology in enumerate(molecules_topologies):
+        
+        ot = topology.to_openmm()
+        for chain in ot.chains():
+            chain.id = abc[i]
+
+        modeller.add(ot,
+                topology.get_positions().to_openmm())
+    
 
 
-    gaff = GAFFTemplateGenerator(molecules=molecule)
+    gaff = GAFFTemplateGenerator(molecules=molecules)
     forcefield = ForceField(args.protein_force_field,
                             args.water_force_field,
                             'amber/tip3p_HFE_multivalent.xml')
@@ -78,8 +95,8 @@ def main(args):
     system = forcefield.createSystem(modeller.topology,
                                     nonbondedCutoff=1.1*unit.nanometers,
                                     switchDistance=0.9*unit.nanometers,
-                                    constraints=app.AllBonds,
-                                    hydrogenMass=4.0*unit.amu,
+                                    constraints=app.HBonds,
+                                    hydrogenMass=1.5*unit.amu,
                                     rigidWater=True, nonbondedMethod=app.PME)
 
 
@@ -97,6 +114,7 @@ def main(args):
                 if atom.name.startswith("C"):
                     restrain_lst.append(atom.index)
 
+    """"
     molecule_position = molecule_topology.get_positions().to_openmm().value_in_unit(unit.nanometer)
     move_vec = npos.mean(axis=0) - molecule_position.mean(axis=0)
 
@@ -107,6 +125,8 @@ def main(args):
     force.addGroup(protd, [1.0 for el in protd])
     force.addBond([0, 1])
     system.addForce(force)
+    """
+
 
 
     add_backbone_posres(system, modeller, 100)
@@ -118,8 +138,8 @@ def main(args):
         PDBFile.writeFile(modeller.topology, modeller.positions, output)
     if args.export_to_gmx:
         structure = pmd.openmm.load_topology(modeller.topology, system, modeller.positions)
-        structure.save(os.path.join("systems", 'system.top'), format='gromacs')
-        structure.save(os.path.join("systems", 'system.gro'), format='gromacs')
+        structure.save(os.path.join(args.output, "systems", 'system.top'), format='gromacs', overwrite=True)
+        structure.save(os.path.join(args.output, "systems", 'system.gro'), format='gromacs', overwrite=True)
 if __name__ == '__main__':
     args = parser.parse_args()
     
